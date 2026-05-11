@@ -1,0 +1,50 @@
+﻿name = "my-contract-review"
+main = "worker/index.js"
+compatibility_date = "2026-05-11"
+workers_dev = true
+routes = [
+  { pattern = "contract-review.online/*", zone_name = "contract-review.online" },
+  { pattern = "www.contract-review.online/*", zone_name = "contract-review.online" }
+]
+
+[vars]
+APP_ORIGIN = "https://contract-review.online"
+CREEM_API_BASE = "https://api.creem.io"
+CREEM_ENV = "live"
+
+[[kv_namespaces]]
+binding = "ANALYTICS_KV"
+id = "b2a7e339d1d048ae9876a96cd4b33c61"
+
+[assets]
+directory = "./out"
+binding = "SITE_ASSETS"
+not_found_handling = "single-page-application"
+run_worker_first = [
+  "/",
+  "/pricing",
+  "/legal-contract-review-template",
+  "/legal-contract-review-reddit",
+  "/legal-contract-review-pdf",
+  "/legal-contract-review-example",
+  "/contract-review-checklist",
+  "/legal-contract-review-ai",
+  "/contract-review-procedure-pdf",
+  "/contract-review-checklist-pdf",
+  "/ai-legal-contract-review-reddit",
+  "/free-ai-contract-review",
+  "/ai-legal-contract-review-template",
+  "/best-free-ai-contract-review",
+  "/ai-contract-review-tool",
+  "/contract-review-online-free",
+  "/best-ai-contract-review",
+  "/contract-review-ai-agent",
+  "/resources/*",
+  "/privacy",
+  "/terms",
+  "/checkout/done",
+  "/sitemap.xml",
+  "/robots.txt",
+  "/api/*"
+]
+

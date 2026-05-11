@@ -1,0 +1,13 @@
+﻿name = "my-contract-review"
+compatibility_date = "2026-05-11"
+pages_build_output_dir = "out"
+
+[vars]
+APP_ORIGIN = "https://contract-review.online"
+CREEM_API_BASE = "https://api.creem.io"
+CREEM_ENV = "live"
+
+[[kv_namespaces]]
+binding = "ANALYTICS_KV"
+id = "b2a7e339d1d048ae9876a96cd4b33c61"
+

@@ -1,0 +1,6 @@
+﻿User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /checkout/done/
+Disallow: /resources/
+Sitemap: https://contract-review.online/sitemap.xml
