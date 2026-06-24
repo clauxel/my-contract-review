@@ -9,8 +9,8 @@ routes = [
 
 [vars]
 APP_ORIGIN = "https://contract-review.online"
-CREEM_API_BASE = "https://api.creem.io"
-CREEM_ENV = "live"
+POLAR_API_BASE = "https://api.polar.sh"
+POLAR_ENV = "live"
 
 [[kv_namespaces]]
 binding = "ANALYTICS_KV"

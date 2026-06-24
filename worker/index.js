@@ -4,7 +4,7 @@ const CANONICAL_ORIGIN = 'https://contract-review.online'
 const CANONICAL_HOSTS = new Set(['contract-review.online', 'www.contract-review.online'])
 const ANNUAL_DISCOUNT_MULTIPLIER = 0.5
 
-const creemProductCache = new Map()
+const polarProductCache = new Map()
 
 const planCatalog = {
   pro: {
@@ -123,9 +123,9 @@ function resolvePublicAppOrigin(requestUrl) {
   return CANONICAL_ORIGIN
 }
 
-function resolveCreemBase(env) {
-  const raw = String(env?.CREEM_API_BASE || '').trim()
-  return raw ? raw.replace(/\/+$/, '') : 'https://api.creem.io'
+function resolvePolarBase(env) {
+  const raw = String(env?.POLAR_API_BASE || '').trim()
+  return raw ? raw.replace(/\/+$/, '') : 'https://api.polar.sh'
 }
 
 async function getSecretValue(value) {
@@ -166,11 +166,11 @@ function resolveConfiguredProductId(env, planId, billing) {
   const tier = planId === 'team' ? 'TEAM' : 'PRO'
   const normalizedSelection = normalizeEnvKey(`${planId}_${billing}`)
   const keys = [
-    `CREEM_PRODUCT_CONTRACT_REVIEW_${tier}_${cycle}`,
-    `CREEM_PRODUCT_ID_CONTRACT_REVIEW_${normalizedSelection}`,
-    `CREEM_PRODUCT_ID_${normalizedSelection}`,
-    `CREEM_PRODUCT_ID_${tier}`,
-    'CREEM_PRODUCT_ID',
+    `POLAR_PRODUCT_CONTRACT_REVIEW_${tier}_${cycle}`,
+    `POLAR_PRODUCT_ID_CONTRACT_REVIEW_${normalizedSelection}`,
+    `POLAR_PRODUCT_ID_${normalizedSelection}`,
+    `POLAR_PRODUCT_ID_${tier}`,
+    'POLAR_PRODUCT_ID',
   ]
 
   for (const key of keys) {
@@ -180,7 +180,7 @@ function resolveConfiguredProductId(env, planId, billing) {
   return ''
 }
 
-async function requestCreemJson(apiKey, url, body) {
+async function requestPolarJson(apiKey, url, body) {
   const response = await fetch(url, {
     method: 'POST',
     headers: {
@@ -203,27 +203,27 @@ async function requestCreemJson(apiKey, url, body) {
   if (!response.ok) {
     throw new Error(
       payload && typeof payload === 'object'
-        ? payload.message || payload.error || 'Creem request failed.'
-        : 'Creem request failed.',
+        ? payload.message || payload.error || 'Polar request failed.'
+        : 'Polar request failed.',
     )
   }
 
   return payload || {}
 }
 
-async function getOrCreateCreemProduct(env, apiKey, plan, billing, successUrl) {
+async function getOrCreatePolarProduct(env, apiKey, plan, billing, successUrl) {
   const configuredProductId = resolveConfiguredProductId(env, plan.id, billing)
   if (configuredProductId) return configuredProductId
 
   const cacheKey = `${plan.id}:${billing}`
-  if (creemProductCache.has(cacheKey)) return creemProductCache.get(cacheKey)
+  if (polarProductCache.has(cacheKey)) return polarProductCache.get(cacheKey)
 
   const effectiveMonthlyCents =
     billing === 'annual' ? Math.round(plan.monthlyAmountCents * ANNUAL_DISCOUNT_MULTIPLIER) : plan.monthlyAmountCents
   const totalAmountCents = billing === 'annual' ? effectiveMonthlyCents * 12 : effectiveMonthlyCents
   const billingLabel = billing === 'annual' ? 'annual' : 'monthly'
 
-  const product = await requestCreemJson(apiKey, `${resolveCreemBase(env)}/v1/products`, {
+  const product = await requestPolarJson(apiKey, `${resolvePolarBase(env)}/v1/products`, {
     name: `Contract Review Online ${plan.name} (${billingLabel})`,
     description: `${formatMoney(effectiveMonthlyCents, plan.currency)}/mo - ${plan.summary}`,
     price: totalAmountCents,
@@ -235,9 +235,9 @@ async function getOrCreateCreemProduct(env, apiKey, plan, billing, successUrl) {
   })
 
   const productId = product.id || product.product_id
-  if (!productId) throw new Error('Creem did not return a product id.')
+  if (!productId) throw new Error('Polar did not return a product id.')
 
-  creemProductCache.set(cacheKey, productId)
+  polarProductCache.set(cacheKey, productId)
   return productId
 }
 
@@ -252,7 +252,7 @@ function extractCheckoutUrl(payload) {
 export async function handleCheckout(request, env, requestUrl = new URL(request.url)) {
   if (request.method !== 'POST') return jsonResponse({ ok: false, error: 'Method not allowed.' }, 405, request)
 
-  const apiKey = await firstSecretEnv(env, 'API_PROD_KEY', 'CREEM_API_KEY', 'CREEM_KEY')
+  const apiKey = await firstSecretEnv(env, 'API_PROD_KEY', 'POLAR_API_KEY', 'POLAR_KEY')
   if (!apiKey) return jsonResponse({ ok: false, error: 'Payment is not configured yet.' }, 503, request)
 
   let body
@@ -268,8 +268,8 @@ export async function handleCheckout(request, env, requestUrl = new URL(request.
   const successUrl = `${resolvePublicAppOrigin(requestUrl)}/checkout/done/`
 
   try {
-    const productId = await getOrCreateCreemProduct(env, apiKey, plan, billing, successUrl)
-    const checkout = await requestCreemJson(apiKey, `${resolveCreemBase(env)}/v1/checkouts`, {
+    const productId = await getOrCreatePolarProduct(env, apiKey, plan, billing, successUrl)
+    const checkout = await requestPolarJson(apiKey, `${resolvePolarBase(env)}/v1/checkouts`, {
       product_id: productId,
       units: 1,
       success_url: successUrl,
@@ -282,8 +282,8 @@ export async function handleCheckout(request, env, requestUrl = new URL(request.
       },
     })
     const checkoutUrl = extractCheckoutUrl(checkout)
-    if (!checkoutUrl) throw new Error('Creem did not return a checkout URL.')
-    return jsonResponse({ ok: true, checkoutUrl, provider: 'creem', planId: plan.id, billing, returnUrl: successUrl }, 200, request)
+    if (!checkoutUrl) throw new Error('Polar did not return a checkout URL.')
+    return jsonResponse({ ok: true, checkoutUrl, provider: 'polar', planId: plan.id, billing, returnUrl: successUrl }, 200, request)
   } catch {
     return jsonResponse({ ok: false, error: 'Secure checkout could not be created yet.' }, 502, request)
   }
@@ -295,7 +295,7 @@ export function handleRuntime(request, requestUrl = new URL(request.url)) {
       ok: true,
       publicAppOrigin: resolvePublicAppOrigin(requestUrl),
       deployment: 'cloudflare-workers-assets',
-      paymentProvider: 'creem',
+      paymentProvider: 'polar',
       defaultPlan: 'pro',
       defaultBilling: 'annual',
       annualDiscount: '50%',
